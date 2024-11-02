@@ -16,7 +16,6 @@ export class TasksService {
   }
 
   createTask(createTaskDto: CreateTaskDto): Task {
-
     const { title, description } = createTaskDto
 
     const task: Task = {
@@ -31,11 +30,16 @@ export class TasksService {
     return task;
   }
 
-  deleteTask(id: string) {
-
-    const taskIndex = this.tasks.findIndex((task) => task.id == id);
-
-    this.tasks.splice(taskIndex, 1)
+  deleteTask(id: string): void {
+    this.tasks = this.tasks.filter((task) => task.id !== id);
   }
 
+  updateStatus(id: string, status: TaskStatus): Task {
+    const taskIndex = this.tasks.findIndex((task) => task.id == id);
+
+    const task = this.tasks[taskIndex];
+    task.status = status;
+
+    return task;
+  }
 }
