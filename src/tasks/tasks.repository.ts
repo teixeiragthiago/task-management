@@ -35,8 +35,6 @@ export class TasksRepository {
     
         const tasks = await query.getMany();
         
-        console.log('passou aqui');
-    
         return tasks;
       }
 
