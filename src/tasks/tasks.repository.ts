@@ -1,84 +1,94 @@
 import { Repository } from "typeorm";
 import { Task } from "./entity/task.entity";
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { GetTasksFilterDto } from "./dto/query-tasks-filter.dto";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { TaskStatus } from "./task-status.enum";
 import { User } from "src/auth/entity/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
+import { Logger } from "@nestjs/common";
 
 @Injectable()
 export class TasksRepository {
-    constructor(
-        @InjectRepository(Task)
-        private readonly repository: Repository<Task>, 
-    ){}
+  private logger = new Logger('TasksRepository', { timestamp: true });
 
-    async getTaskById(id: string, user: User): Promise<Task> {
+  constructor(
+    @InjectRepository(Task)
+    private readonly repository: Repository<Task>,
+  ) { }
 
-        const task = await this.repository.findOne({where: {id, user}})
-        if(!task) {
-          throw new NotFoundException();
-        }
+  async getTaskById(id: string, user: User): Promise<Task> {
 
-        return task;
+    const task = await this.repository.findOne({ where: { id, user } })
+    if (!task) {
+      throw new NotFoundException();
     }
 
-    async getTasks(filterDto: GetTasksFilterDto, @GetUser() user: User): Promise<Task[]> {
+    return task;
+  }
 
-        const { status, search } = filterDto;
-    
-        const query = this.repository.createQueryBuilder('task');
-        query.where({user});
-    
-        if(status) {
-          query.andWhere('task.status = :status', { status });
-        }
-    
-        if(search) {
-          query.andWhere('(LOWER(task.title) LIKE :search OR LOWER(task.description) LIKE LOWER(:search))', {
-            search: `%${search.toLowerCase()}%`
-          })
-        }
+  async getTasks(filterDto: GetTasksFilterDto, @GetUser() user: User): Promise<Task[]> {
 
-        const tasks = await query.getMany();
-        
-        return tasks;
+    try {
+      const { status, search } = filterDto;
+
+      const query = this.repository.createQueryBuilder('task');
+      query.where({ user });
+
+      if (status) {
+        query.andWhere('task.status = :status', { status });
       }
 
-      async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
-
-        const { title, description } = createTaskDto;
-    
-        const task = this.repository.create({
-          title,
-          description,
-          status: TaskStatus.OPEN,
-          user
-        });
-    
-        await this.repository.save(task);
-    
-        return task;
+      if (search) {
+        query.andWhere('(LOWER(task.title) LIKE :search OR LOWER(task.description) LIKE LOWER(:search))', {
+          search: `%${search.toLowerCase()}%`
+        })
       }
 
-      async deleteTask(id: string, user: User): Promise<void> {
-        const result = await this.repository.delete({ id, user });
-    
-        if(result.affected === 0) {
-          throw new NotFoundException('Task not found to delete!')
-        }
-      }
+      const tasks = await query.getMany();
 
-      async updateStatus(id: string, status: TaskStatus, user: User): Promise<Task> {
+      return tasks;
 
-        const task = await this.repository.findOne({where: {id, user}});
-        
-        task.status = status;
-        await this.repository.save(task);
-    
-        return task;
-      }
+    } catch (error) {
+
+      this.logger.error(`Failed to get tasks for user "${user.username}". Filters: ${JSON.stringify(filterDto)}`, error)
+      throw new InternalServerErrorException();
+    }
+  }
+
+  async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
+
+    const { title, description } = createTaskDto;
+
+    const task = this.repository.create({
+      title,
+      description,
+      status: TaskStatus.OPEN,
+      user
+    });
+
+    await this.repository.save(task);
+
+    return task;
+  }
+
+  async deleteTask(id: string, user: User): Promise<void> {
+    const result = await this.repository.delete({ id, user });
+
+    if (result.affected === 0) {
+      throw new NotFoundException('Task not found to delete!')
+    }
+  }
+
+  async updateStatus(id: string, status: TaskStatus, user: User): Promise<Task> {
+
+    const task = await this.repository.findOne({ where: { id, user } });
+
+    task.status = status;
+    await this.repository.save(task);
+
+    return task;
+  }
 
 }

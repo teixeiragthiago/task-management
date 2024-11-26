@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { TaskStatus } from './task-status.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
  import { Task } from './entity/task.entity';
@@ -8,6 +8,8 @@ import { User } from 'src/auth/entity/user.entity';
 
 @Injectable()
 export class TasksService {
+
+  private logger = new Logger(`TasksService`, { timestamp: true });
 
   constructor(
     private readonly tasksRepository: TasksRepository
